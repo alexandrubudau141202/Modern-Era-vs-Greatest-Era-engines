@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>F1 ENGINE VISUALIZER — V10 vs V6 TURBO HYBRID</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&family=Barlow+Condensed:ital,wght@0,300;0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+
+<!-- Three.js from CDN — available as window.THREE for the ES module graph -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<style>
+/* ══════════════════════════════════════════════════════════════
+   BASE RESET & TOKENS
+══════════════════════════════════════════════════════════════ */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg:          #04040a;
+  --surface:     #09090f;
+  --surface2:    #0f0f18;
+  --surface3:    #141420;
+  --border:      #181824;
+  --border2:     #22222e;
+  --border3:     #2e2e3e;
+  --accent:      #E10600;
+  --accent-dim:  rgba(225,6,0,0.15);
+  --accent-glow: rgba(225,6,0,0.4);
+  --cyan:        #00D4FF;
+  --cyan-dim:    rgba(0,212,255,0.12);
+  --cyan-glow:   rgba(0,212,255,0.35);
+  --green:       #00E676;
+  --yellow:      #FFD600;
+  --text:        #D0D0DC;
+  --text2:       #8888a0;
+  --text3:       #44445a;
+  --fd: 'Orbitron', monospace;
+  --fm: 'Share Tech Mono', monospace;
+  --fu: 'Barlow Condensed', sans-serif;
+}
+
+html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--fu); }
+
+/* ══════════════════════════════════════════════════════════════
+   HEADER
+══════════════════════════════════════════════════════════════ */
+header {
+  height: 48px; display: flex; align-items: center; padding: 0 16px; gap: 16px;
+  background: var(--surface); border-bottom: 1px solid var(--border2);
+  flex-shrink: 0; position: relative; z-index: 20;
+}
+.logo { font-family: var(--fd); font-size: 11px; font-weight: 900; letter-spacing: .2em; color: var(--accent); white-space: nowrap; }
+.logo em { color: var(--text); font-style: normal; }
+.hdiv { width: 1px; height: 24px; background: var(--border2); }
+
+.engine-tabs { display: flex; gap: 3px; }
+.etab {
+  font-family: var(--fd); font-size: 9px; font-weight: 700; letter-spacing: .1em;
+  padding: 5px 14px; border: 1px solid var(--border2); background: transparent;
+  color: var(--text2); cursor: pointer; transition: all .18s;
+  clip-path: polygon(7px 0%, 100% 0%, calc(100% - 7px) 100%, 0% 100%);
+}
+.etab.on  { background: var(--accent); border-color: var(--accent); color: #fff; }
+.etab:hover:not(.on) { border-color: var(--accent); color: var(--text); }
+
+.hright { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: ldot 2s ease infinite; }
+@keyframes ldot { 0%,100% { opacity:1; box-shadow:0 0 0 0 rgba(0,230,118,.5); } 50% { opacity:.7; box-shadow:0 0 0 5px rgba(0,230,118,0); } }
+.live-txt { font-family: var(--fm); font-size: 9px; color: var(--green); letter-spacing: .1em; }
+.fps-txt  { font-family: var(--fm); font-size: 9px; color: var(--text3); letter-spacing: .08em; }
+
+/* ══════════════════════════════════════════════════════════════
+   LAYOUT
+══════════════════════════════════════════════════════════════ */
+.main { display: flex; height: calc(100vh - 48px); }
+
+.pleft {
+  width: 252px; flex-shrink: 0; background: var(--surface);
+  border-right: 1px solid var(--border2);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.pright {
+  width: 268px; flex-shrink: 0; background: var(--surface);
+  border-left: 1px solid var(--border2);
+  display: flex; flex-direction: column; overflow-y: auto;
+}
+.psec { padding: 14px; border-bottom: 1px solid var(--border); }
+.slabel {
+  font-family: var(--fd); font-size: 7px; letter-spacing: .28em;
+  color: var(--text3); margin-bottom: 10px; text-transform: uppercase;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CANVAS AREA
+══════════════════════════════════════════════════════════════ */
+.canvas-area {
+  flex: 1; position: relative; overflow: hidden;
+  background: radial-gradient(ellipse at 50% 40%, #0e0e1c 0%, #04040a 65%);
+}
+.canvas-area::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+#ec { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block; cursor: grab; }
+#ec:active { cursor: grabbing; }
+
+/* Canvas overlays */
+.cov { position: absolute; pointer-events: none; }
+.cov-corner { top: 14px; left: 14px; }
+.corner-id   { font-family: var(--fd);  font-size: 8px; letter-spacing: .18em; color: var(--text3); }
+.corner-hint { font-family: var(--fm);  font-size: 8px; color: var(--text3); margin-top: 3px; }
+
+.cov-rpm { bottom: 28px; left: 50%; transform: translateX(-50%); text-align: center; }
+.rpm-num {
+  font-family: var(--fd); font-size: 52px; font-weight: 900;
+  color: #FF1800; line-height: 1; letter-spacing: .04em;
+  text-shadow: 0 0 24px rgba(255,24,0,.55), 0 0 55px rgba(255,24,0,.25);
+}
+.rpm-lbl { font-family: var(--fm); font-size: 10px; color: var(--text2); letter-spacing: .22em; margin-top: 2px; }
+
+/* Rev lights */
+.revbar { position: absolute; bottom: 0; left: 0; right: 0; height: 5px; background: var(--surface); display: flex; gap: 2px; padding: 0 3px; }
+.revseg { flex: 1; height: 100%; border-radius: 1px; transition: opacity .08s, box-shadow .08s; }
+
+/* ══════════════════════════════════════════════════════════════
+   LEFT PANEL COMPONENTS
+══════════════════════════════════════════════════════════════ */
+.eng-card { background: var(--surface2); border: 1px solid var(--border2); padding: 11px; border-radius: 2px; }
+.eng-name { font-family: var(--fd); font-size: 10px; font-weight: 700; letter-spacing: .06em; color: var(--text); margin-bottom: 4px; }
+.eng-sub  { font-family: var(--fm); font-size: 8px; color: var(--text2); letter-spacing: .1em; }
+
+.cg { margin-bottom: 14px; }
+.cg:last-child { margin-bottom: 0; }
+.clabel { font-family: var(--fm); font-size: 8px; color: var(--text2); letter-spacing: .12em; margin-bottom: 7px; display: flex; justify-content: space-between; }
+.cval   { color: var(--cyan); }
+
+input[type=range] { -webkit-appearance: none; width: 100%; height: 3px; background: var(--border2); border-radius: 2px; outline: none; }
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 13px; height: 13px; border-radius: 50%;
+  background: var(--accent); cursor: pointer;
+  box-shadow: 0 0 7px var(--accent-glow); border: 2px solid rgba(255,255,255,.15);
+}
+
+.bgrp { display: flex; gap: 6px; margin-bottom: 6px; }
+.btn {
+  flex: 1; padding: 7px 4px; border: 1px solid var(--border2); background: var(--surface2);
+  color: var(--text2); font-family: var(--fd); font-size: 7px; letter-spacing: .14em;
+  cursor: pointer; transition: all .18s;
+  clip-path: polygon(5px 0%, 100% 0%, calc(100% - 5px) 100%, 0% 100%);
+  text-align: center;
+}
+.btn:hover     { border-color: var(--accent); color: var(--text); }
+.btn.on        { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.vbtn {
+  flex: 1; padding: 5px 3px; border: 1px solid var(--border2); background: var(--surface2);
+  color: var(--text2); font-family: var(--fm); font-size: 8px; letter-spacing: .1em;
+  cursor: pointer; transition: all .18s; text-align: center;
+}
+.vbtn.on               { border-color: var(--cyan); color: var(--cyan); }
+.vbtn:hover:not(.on)   { border-color: var(--border3); color: var(--text); }
+
+/* Firing LEDs */
+.fire-row { display: flex; gap: 3px; justify-content: center; flex-wrap: wrap; }
+.cyl-led {
+  width: 24px; height: 24px; border: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--fm); font-size: 9px; color: var(--text2);
+  background: var(--surface2); transition: all .06s;
+}
+.cyl-led.fire { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 0 10px var(--accent-glow); }
+
+/* Specs table */
+.srow { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--border); }
+.srow:last-child { border-bottom: none; }
+.sk { font-family: var(--fm); font-size: 8px; color: var(--text2); letter-spacing: .06em; }
+.sv { font-family: var(--fm); font-size: 8px; color: var(--text); font-weight: 500; }
+
+/* ══════════════════════════════════════════════════════════════
+   RIGHT PANEL COMPONENTS
+══════════════════════════════════════════════════════════════ */
+.mgrp { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.metric { background: var(--surface2); border: 1px solid var(--border); padding: 9px; border-radius: 2px; position: relative; overflow: hidden; }
+.metric::before { content: ''; position: absolute; top: 0; left: 0; width: 2px; height: 100%; background: var(--accent); }
+.metric.c::before { background: var(--cyan); }
+.metric.g::before { background: var(--green); }
+.metric.y::before { background: var(--yellow); }
+.mlbl  { font-family: var(--fm); font-size: 7px; color: var(--text2); letter-spacing: .1em; margin-bottom: 3px; }
+.mval  { font-family: var(--fd); font-size: 19px; font-weight: 700; color: var(--text); line-height: 1; }
+.munit { font-family: var(--fm); font-size: 8px; color: var(--text2); margin-left: 2px; }
+
+/* ERS */
+.erscard { background: var(--surface2); border: 1px solid var(--border); padding: 10px; border-radius: 2px; }
+.ers-row { margin-bottom: 8px; }
+.ers-row:last-child { margin-bottom: 0; }
+.ers-lbl { font-family: var(--fm); font-size: 7px; color: var(--text2); letter-spacing: .12em; margin-bottom: 5px; display: flex; justify-content: space-between; }
+.ers-lbl span { color: var(--cyan); }
+.ersbar  { height: 5px; background: var(--border2); border-radius: 2px; overflow: hidden; }
+.ersfill { height: 100%; border-radius: 2px; transition: width .25s ease; }
+.ers-fill-k  { background: linear-gradient(90deg, var(--green), var(--cyan)); box-shadow: 0 0 6px var(--cyan-glow); }
+.ers-fill-h  { background: linear-gradient(90deg, var(--yellow), #FF8700); }
+.boost-fill  { background: linear-gradient(90deg, #FF8700, var(--yellow)); }
+.ersblock { transition: opacity .3s; }
+
+/* Comparison bars */
+.cmprow { margin-bottom: 10px; }
+.cmprow:last-child { margin-bottom: 0; }
+.cmplbl { font-family: var(--fm); font-size: 8px; color: var(--text2); letter-spacing: .1em; margin-bottom: 5px; }
+.cmpbar-wrap { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+.cmpbar-bg   { flex: 1; height: 3px; background: var(--border2); border-radius: 2px; overflow: hidden; }
+.cmpbar-fill { height: 100%; border-radius: 2px; }
+.cmpval      { font-family: var(--fm); font-size: 8px; width: 54px; text-align: right; white-space: nowrap; }
+
+/* Frequency bars */
+.freqrow { display: flex; gap: 2px; align-items: flex-end; height: 44px; padding: 0 2px; }
+.fbar    { flex: 1; border-radius: 1px 1px 0 0; background: var(--accent); opacity: .55; min-height: 3px; transition: height .08s; }
+
+/* Scrollbar */
+::-webkit-scrollbar        { width: 3px; }
+::-webkit-scrollbar-track  { background: var(--surface); }
+::-webkit-scrollbar-thumb  { background: var(--border3); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">F1<em> ENGINE</em> VISUALIZER</div>
+  <div class="hdiv"></div>
+  <div class="engine-tabs">
+    <button class="etab on" data-engine="v10">3.0L V10 NA</button>
+    <button class="etab"    data-engine="v6">1.6L V6 TURBO HYBRID</button>
+  </div>
+  <div class="hright">
+    <div class="live-dot"></div>
+    <div class="live-txt">SIMULATION ACTIVE</div>
+    <div class="hdiv"></div>
+    <div class="fps-txt" id="fpsLabel">60 FPS</div>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- ═══════════ LEFT PANEL ═══════════ -->
+  <div class="pleft">
+
+    <div class="psec">
+      <div class="slabel">Engine Configuration</div>
+      <div class="eng-card">
+        <div class="eng-name" id="engName">—</div>
+        <div class="eng-sub"  id="engSub">—</div>
+      </div>
+    </div>
+
+    <div class="psec">
+      <div class="slabel">RPM Control</div>
+      <div class="cg">
+        <div class="clabel">ENGINE SPEED <span class="cval" id="rpmCtrlVal">8,000 RPM</span></div>
+        <input type="range" id="rpmSlider" min="800" max="19000" value="8000">
+      </div>
+      <div class="bgrp">
+        <button class="btn" data-rpm="800">IDLE</button>
+        <button class="btn" data-rpm="9000">MID</button>
+        <button class="btn" data-rpm="15500">PEAK</button>
+        <button class="btn" data-rpm="max">MAX</button>
+      </div>
+    </div>
+
+    <div class="psec">
+      <div class="slabel">Animation</div>
+      <div class="bgrp" style="margin-bottom:10px">
+        <button class="btn on" id="playBtn">⏸ PAUSE</button>
+        <button class="btn" id="resetCamBtn">RESET CAM</button>
+      </div>
+      <div class="slabel" style="margin-top:8px">Render Mode</div>
+      <div class="bgrp">
+        <button class="vbtn on" data-view="solid">SOLID</button>
+        <button class="vbtn"    data-view="wire">WIRE</button>
+        <button class="vbtn"    data-view="xray">X-RAY</button>
+      </div>
+    </div>
+
+    <div class="psec">
+      <div class="slabel">Cylinder Firing</div>
+      <div class="fire-row" id="fireLEDs"></div>
+      <div style="margin-top:7px;font-family:var(--fm);font-size:7px;color:var(--text3);letter-spacing:.1em;text-align:center" id="fireOrder">
+        ORDER: —
+      </div>
+    </div>
+
+    <div class="psec" style="flex:1;overflow-y:auto">
+      <div class="slabel">Specifications</div>
+      <div id="specsTable"></div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════ 3D CANVAS ═══════════ -->
+  <div class="canvas-area">
+    <canvas id="ec"></canvas>
+    <div class="cov cov-corner">
+      <div class="corner-id"   id="cornerId">—</div>
+      <div class="corner-hint">DRAG to orbit · SCROLL to zoom</div>
+    </div>
+    <div class="cov cov-rpm">
+      <div class="rpm-num" id="rpmBig">8,000</div>
+      <div class="rpm-lbl">RPM</div>
+    </div>
+    <div class="revbar" id="revbar"></div>
+  </div>
+
+  <!-- ═══════════ RIGHT PANEL ═══════════ -->
+  <div class="pright">
+
+    <div class="psec">
+      <div class="slabel">Live Performance</div>
+      <div class="mgrp">
+        <div class="metric">
+          <div class="mlbl">POWER</div>
+          <div><span class="mval" id="mPow">—</span><span class="munit">HP</span></div>
+        </div>
+        <div class="metric c">
+          <div class="mlbl">TORQUE</div>
+          <div><span class="mval" id="mTorq">—</span><span class="munit">NM</span></div>
+        </div>
+        <div class="metric g">
+          <div class="mlbl">EFFICIENCY</div>
+          <div><span class="mval" id="mEff">—</span><span class="munit">%</span></div>
+        </div>
+        <div class="metric y">
+          <div class="mlbl">EXH TEMP</div>
+          <div><span class="mval" id="mTemp">—</span><span class="munit">°C</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="psec ersblock" id="ersBlock">
+      <div class="slabel">Energy Recovery System</div>
+      <div class="erscard">
+        <div class="ers-row">
+          <div class="ers-lbl">MGU-K DEPLOY <span id="mgukVal">0 kW</span></div>
+          <div class="ersbar"><div class="ersfill ers-fill-k" id="mgukFill" style="width:0%"></div></div>
+        </div>
+        <div class="ers-row">
+          <div class="ers-lbl">MGU-H HARVEST <span id="mguhVal">0 kW</span></div>
+          <div class="ersbar"><div class="ersfill ers-fill-h" id="mguhFill" style="width:0%"></div></div>
+        </div>
+        <div class="ers-row" style="margin-top:8px">
+          <div class="ers-lbl">TURBO BOOST <span id="boostVal">0.0 BAR</span></div>
+          <div class="ersbar"><div class="ersfill boost-fill" id="boostFill" style="width:0%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="psec">
+      <div class="slabel">Era Comparison</div>
+      <div id="cmpPanel"></div>
+      <div style="font-family:var(--fm);font-size:7px;color:var(--text3);margin-top:8px;letter-spacing:.08em">
+        <span style="color:var(--accent)">■</span> V10 2000s ERA &nbsp;
+        <span style="color:var(--cyan)">■</span> V6 HYBRID 2014+
+      </div>
+    </div>
+
+    <div class="psec">
+      <div class="slabel">Acoustic Signature</div>
+      <div class="freqrow" id="freqBars"></div>
+      <div style="font-family:var(--fm);font-size:7px;color:var(--text3);letter-spacing:.1em;margin-top:6px" id="acousticDesc">—</div>
+    </div>
+
+    <div class="psec" style="flex:1;overflow-y:auto">
+      <div class="slabel">Engine Notes</div>
+      <div id="engNotes" style="font-family:var(--fu);font-size:11px;color:var(--text2);line-height:1.6;font-weight:300"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Three.js is loaded globally above; ES module imports resolve to window.THREE -->
+<script type="module">
+  // Shim: expose Three.js as a resolvable bare specifier
+  // by overriding all `import * as THREE from 'three'` calls
+  // to consume the global already loaded by the CDN script.
+  //
+  // Since import maps may not be available in all environments, we
+  // polyfill by injecting a dynamic import that re-exports window.THREE.
+  //
+  // For production, swap the CDN <script> for an npm build or use an importmap:
+  //   <script type="importmap">
+  //     { "imports": { "three": "https://esm.sh/three@0.128.0" } }
+  //   </script>
+  //
+  // ── Workaround: inline all modules via importmap (preferred) ──────────
+</script>
+
+<!--
+  RECOMMENDED SETUP (works in all modern browsers):
+  Replace the bare `import … from 'three'` statements in the JS modules
+  with the CDN ESM URL, OR add the following importmap before main.js:
+-->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://esm.sh/three@0.128.0"
+  }
+}
+</script>
+
+<script type="module" src="src/main.js"></script>
+
+</body>
+</html>

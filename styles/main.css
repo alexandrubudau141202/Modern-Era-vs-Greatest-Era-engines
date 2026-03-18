@@ -1,0 +1,6 @@
+/*
+  styles/main.css — reserved for any styles you want to extract from index.html.
+  Currently all styles are inlined in index.html for zero-dependency portability.
+  Move CSS here and add <link rel="stylesheet" href="styles/main.css"> in index.html
+  when you want to split them out.
+*/
