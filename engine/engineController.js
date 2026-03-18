@@ -2,38 +2,23 @@ import * as THREE from 'three';
 import { v10Data } from '../data/v10Data.js';
 import { v6Data  } from '../data/v6Data.js';
 import { buildV10, buildV6, loadGLBModel } from './loadEngineModel.js';
-import { applyRenderMode } from './pistonAnimation.js';
+import { applyRenderMode, stepMixer } from './pistonAnimation.js';
 
-// ── Map engine type → GLB path (set to null to use procedural geometry) ──────
 const GLB_PATHS = {
-  v10: './assets/models/engine.glb',
-  v6:  './assets/models/v8_engine_internals.glb',
+  v10: './assets/models/v8_engine_internals.glb',  // 378 separate meshes, geometry detection
+  v6:  './assets/models/i4_engine.glb',            // named nodes + embedded animation clip
 };
 
-/**
- * EngineController owns the current engine mesh in the scene.
- * Tries GLB files first; falls back to procedural geometry if unavailable.
- */
 export class EngineController {
   constructor(scene) {
     this.scene      = scene;
     this.current    = null;
     this.engineType = null;
     this.renderMode = 'solid';
-    this._mixer     = null;
   }
 
-  /**
-   * Load (or swap) an engine. Async — awaits GLB if configured.
-   * @param {'v10'|'v6'} type
-   * @param {function} [onReady]
-   */
   async load(type, onReady) {
-    if (this.current) {
-      this.scene.remove(this.current.g);
-      this.current = null;
-      this._mixer  = null;
-    }
+    if (this.current) { this.scene.remove(this.current.g); this.current = null; }
 
     this.engineType = type;
     const cfg     = type === 'v10' ? v10Data : v6Data;
@@ -42,7 +27,7 @@ export class EngineController {
 
     if (glbPath) {
       try {
-        engine = await loadGLBModel(glbPath, cfg.maxRPM);
+        engine = await loadGLBModel(glbPath, cfg.maxRPM, cfg.cyls);
         console.info('[EngineController] Loaded GLB:', glbPath);
       } catch (err) {
         console.warn('[EngineController] GLB failed, using procedural fallback.', err);
@@ -57,18 +42,16 @@ export class EngineController {
 
     engine.g.position.y = 0.18;
     this.scene.add(engine.g);
-
     this.current = engine;
-    this._mixer  = engine.mixer || null;
 
     applyRenderMode(engine.g, this.renderMode);
     if (onReady) onReady(engine);
     return engine;
   }
 
-  /** Advance GLB AnimationMixer — call every frame. */
-  updateMixer(dt) {
-    if (this._mixer) this._mixer.update(dt);
+  /** Call every frame — advances AnimationMixer for GLBs that have one. */
+  updateMixer(rpm, dt) {
+    if (this.current) stepMixer(this.current.mixer, rpm, this.config.maxRPM, dt, this.current.animRootNode);
   }
 
   setRenderMode(mode) {

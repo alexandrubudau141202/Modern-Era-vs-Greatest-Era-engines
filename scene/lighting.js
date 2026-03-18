@@ -9,10 +9,10 @@ import * as THREE from 'three';
  */
 export function addLights(scene) {
   // ── Ambient ───────────────────────────────────────────────────────────
-  scene.add(new THREE.AmbientLight(0x10101c, 4));
+  scene.add(new THREE.AmbientLight(0x1a1610, 3.5));
 
   // ── Key light (top-right-front) ───────────────────────────────────────
-  const keyLight = new THREE.DirectionalLight(0xffffff, 5);
+  const keyLight = new THREE.DirectionalLight(0xfff5e0, 5.5);
   keyLight.position.set(7, 12, 7);
   keyLight.castShadow = true;
   keyLight.shadow.mapSize.set(2048, 2048);
@@ -25,22 +25,22 @@ export function addLights(scene) {
   scene.add(keyLight);
 
   // ── Fill light (top-left-back) ────────────────────────────────────────
-  const fillLight = new THREE.DirectionalLight(0x223366, 1.8);
+  const fillLight = new THREE.DirectionalLight(0x2a2010, 1.4);
   fillLight.position.set(-7, 3, -6);
   scene.add(fillLight);
 
   // ── Rim light (back-low) ──────────────────────────────────────────────
-  const rimLight = new THREE.DirectionalLight(0x445566, 2.2);
+  const rimLight = new THREE.DirectionalLight(0xc8a840, 1.8);
   rimLight.position.set(0, -4, 9);
   scene.add(rimLight);
 
   // ── Dynamic: exhaust heat glow ────────────────────────────────────────
-  const exhaustLight = new THREE.PointLight(0xff2000, 0, 14);
+  const exhaustLight = new THREE.PointLight(0xc8a030, 0, 14);
   exhaustLight.position.set(0, -1.8, 0);
   scene.add(exhaustLight);
 
   // ── Dynamic: ERS glow (V6 only) ───────────────────────────────────────
-  const ersLight = new THREE.PointLight(0x00d4ff, 0, 10);
+  const ersLight = new THREE.PointLight(0xe0c060, 0, 10);
   ersLight.position.set(-2, 1, 0);
   scene.add(ersLight);
 

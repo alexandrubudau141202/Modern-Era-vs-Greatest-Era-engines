@@ -1,53 +1,50 @@
 export const v6Data = {
   id: 'v6',
-  name: 'MERCEDES PU106A — 1.6L V6',
-  sub: '2014+ ERA · TURBO HYBRID POWER UNIT',
-  cornerId: '1.6L V6 TURBO · MERCEDES PU106A · 15,000 RPM',
-  maxRPM: 15000,
-  cyls: 6,
-  firingOrder: [1, 4, 2, 5, 3, 6],
-  hybrid: true,
-  acoustic: 'TURBOCHARGED · LOWER TONE · 1–2 kHz PEAK',
+  name: 'HONDA RA168E — 1.5L INLINE-4',
+  sub: '1980s TURBO ERA · TURBOCHARGED',
+  cornerId: '1.5L INLINE-4 TURBO · HONDA RA168E · 13,000 RPM',
+  maxRPM: 13000,
+  cyls: 4,
+  firingOrder: [1, 3, 4, 2],
+  hybrid: false,
+  acoustic: 'TURBO WHISTLE · FLAT-PLANE · 1.5–2.5 kHz PEAK',
   notes:
-    'The hybrid power unit redefined F1 engineering. At over 50% thermal efficiency, ' +
-    'it generates ~850 hp from the ICE alone, with 163 kW (218 hp) of electric boost via MGU-K. ' +
-    'The MGU-H harvests exhaust energy to eliminate turbo lag — an engineering achievement ' +
-    'without precedent in motorsport.',
+    'The Honda RA168E powered Ayrton Senna and Alain Prost to dominance in 1988, ' +
+    'winning 15 of 16 races. In qualifying trim it was rumoured to exceed 1,400 hp. ' +
+    'A flat-plane inline-4 with a massive KKK turbocharger, it redefined what a ' +
+    '1.5L engine could do — and ended an era when turbos were banned in 1989.',
   specs: [
-    ['DISPLACEMENT', '1599 cc'],
-    ['CYLINDERS',    '6 (3+3)'],
-    ['BANK ANGLE',   '90°'],
-    ['BORE',         '80.0 mm'],
-    ['STROKE',       '53.0 mm'],
-    ['COMPRESSION',  '12.0:1'],
-    ['MAX RPM',      '15,000'],
+    ['DISPLACEMENT', '1494 cc'],
+    ['CYLINDERS',    '4 (inline)'],
+    ['LAYOUT',       'Inline-4'],
+    ['BORE',         '79.0 mm'],
+    ['STROKE',       '76.4 mm'],
+    ['COMPRESSION',  '7.5:1'],
+    ['MAX RPM',      '13,000'],
     ['WEIGHT',       '~145 kg'],
-    ['ERS POWER',    '163 kW'],
+    ['ERA',          '1983–1988'],
   ],
 
-  // Geometry constants used by the builder
   geometry: {
-    cylCount: 3,        // per bank
-    cylSpacing: 1.14,
-    bankAngle: Math.PI / 4,
-    bore: 0.40,
-    stroke: 0.30,
-    cylHeight: 1.05,
+    cylCount: 4,
+    cylSpacing: 1.05,
+    bankAngle: 0,           // inline — no V angle
+    bore: 0.38,
+    stroke: 0.32,
+    cylHeight: 1.1,
   },
 
-  // Crankshaft phase offsets for 6 cylinders (90° V, 120° crank intervals)
+  // Inline-4 flat-plane crank: 0°, 180°, 180°, 0° (firing every 180°)
   crankPhases: [
     0,
-    Math.PI * 2 / 3,
-    Math.PI * 4 / 3,
-    Math.PI / 3,
     Math.PI,
-    Math.PI * 5 / 3,
+    Math.PI,
+    0,
   ],
 };
 
 /**
- * Compute live performance metrics for the V6 hybrid at a given RPM.
+ * Compute live performance metrics for the Inline-4 turbo at a given RPM.
  * @param {number} rpm
  * @returns {{ power: number, torque: number, efficiency: number, exhaustTemp: number,
  *             mgukKw: number, mguhKw: number, boostBar: string,
@@ -57,30 +54,34 @@ export function getV6Metrics(rpm) {
   const maxRPM = v6Data.maxRPM;
   const n      = rpm / maxRPM;
 
-  let iceP;
-  if (rpm < 2000) {
-    iceP = Math.round(rpm * 0.15);
-  } else if (rpm < 14000) {
-    iceP = Math.round(60 + (rpm - 2000) / 12000 * 700);
+  // Power curve: turbos spool from ~4,000 RPM, peak ~11,000
+  let power;
+  if (rpm < 1500) {
+    power = Math.round(rpm * 0.08);
+  } else if (rpm < 4000) {
+    power = Math.round(120 + (rpm - 1500) / 2500 * 180);
+  } else if (rpm < 11000) {
+    power = Math.round(300 + (rpm - 4000) / 7000 * 600);
   } else {
-    iceP = Math.round(760 - (rpm - 14000) / 1000 * 50);
+    power = Math.round(900 - (rpm - 11000) / 2000 * 120);
   }
-  const ersP  = rpm > 3500 ? Math.round(218 * Math.min(1, (rpm - 3500) / 5000)) : 0;
-  const power = Math.max(0, Math.round(iceP + ersP));
-  const torque = rpm > 300 ? Math.round(power * 9549 / rpm) : 0;
+  power = Math.max(0, power);
 
-  const efficiency  = Math.round(38 + n * 15);
-  const exhaustTemp = Math.round(200 + n * 110);
+  const torque      = rpm > 300 ? Math.round(power * 9549 / rpm) : 0;
+  const efficiency  = Math.round(28 + n * 10);
+  const exhaustTemp = Math.round(320 + n * 180);
 
-  const mgukPct = rpm > 3500 ? Math.min(100, Math.round((rpm - 3500) / 5000 * 100)) : 0;
-  const mguhPct = rpm > 8000 ? Math.min(100, Math.round((rpm - 8000) / 7000 * 100)) : 0;
-  const boostPct = Math.round(n * 100);
-  const boostBar = (n * 4.8).toFixed(1);
+  // Reuse ERS fields to show turbo boost metrics
+  const boostPct = rpm > 3500 ? Math.min(100, Math.round((rpm - 3500) / 7500 * 100)) : 0;
+  const boostBar = (n * 5.5).toFixed(1);
+  // MGU-K / MGU-H repurposed as charge-cooler and wastegate indicators
+  const mgukPct  = boostPct;
+  const mguhPct  = rpm > 6000 ? Math.min(100, Math.round((rpm - 6000) / 7000 * 100)) : 0;
 
   return {
     power, torque, efficiency, exhaustTemp,
-    mgukKw:  Math.round(mgukPct * 1.63),
-    mguhKw:  Math.round(mguhPct * 0.9),
+    mgukKw:  Math.round(mgukPct * 2.2),
+    mguhKw:  Math.round(mguhPct * 1.4),
     boostBar,
     mgukPct, mguhPct, boostPct,
   };

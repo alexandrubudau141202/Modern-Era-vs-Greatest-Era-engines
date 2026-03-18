@@ -20,15 +20,15 @@ export function buildComparisonPanel() {
       <div class="cmplbl">${c.lbl}</div>
       <div class="cmpbar-wrap">
         <div class="cmpbar-bg">
-          <div class="cmpbar-fill" style="background:var(--accent);width:${c.v10p}%"></div>
+          <div class="cmpbar-fill" style="background:var(--gold);width:${c.v10p}%"></div>
         </div>
-        <div class="cmpval" style="color:var(--accent)">${c.v10}</div>
+        <div class="cmpval" style="color:var(--gold)">${c.v10}</div>
       </div>
       <div class="cmpbar-wrap">
         <div class="cmpbar-bg">
-          <div class="cmpbar-fill" style="background:var(--cyan);width:${c.v6p}%"></div>
+          <div class="cmpbar-fill" style="background:var(--bronze);width:${c.v6p}%"></div>
         </div>
-        <div class="cmpval" style="color:var(--cyan)">${c.v6}</div>
+        <div class="cmpval" style="color:var(--bronze)">${c.v6}</div>
       </div>
     </div>`).join('');
 }
@@ -152,11 +152,11 @@ function updateFreqBars(type, rpm, maxRPM) {
     if (type === 'v10') {
       const pk = Math.exp(-0.5 * ((i - 14) / 3.2) ** 2);
       h = (pk * 0.7 + noise * 0.3) * n * 95;
-      b.style.background = 'var(--accent)';
+      b.style.background = 'var(--gold)';
     } else {
       const pk = Math.exp(-0.5 * ((i - 7) / 3.8) ** 2);
       h = (pk * 0.7 + noise * 0.3) * n * 95;
-      b.style.background = 'var(--cyan)';
+      b.style.background = 'var(--bronze)';
     }
     b.style.height = Math.max(4, h) + '%';
   }

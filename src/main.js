@@ -126,7 +126,7 @@ function animate() {
   // Engine animation
   if (playing && eng) {
     crankAng = stepEngineAnimation(eng, rpm, dt, { exhaustLight, ersLight }, engineCtrl.isHybrid, crankAng);
-    engineCtrl.updateMixer(dt);  // advances GLB embedded animations
+    engineCtrl.updateMixer(rpm, dt);  // advances GLB embedded animations
 
     // Firing LEDs (update every 4th frame for perf)
     if (Math.round(crankAng * 10) % 4 === 0) {
