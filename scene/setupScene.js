@@ -11,6 +11,7 @@ export function setupScene(canvas) {
     canvas,
     antialias: true,
     powerPreference: 'high-performance',
+    preserveDrawingBuffer: true,  // required for html2canvas snapshot
   });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;

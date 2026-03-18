@@ -358,6 +358,17 @@ input[type=range]::-webkit-slider-thumb {
 .canvas-area { animation:fadeUp .8s cubic-bezier(.4,0,.2,1) both; }
 .pright { animation:fadeUp .6s cubic-bezier(.4,0,.2,1) .2s both; }
 
+/* Snapshot button */
+.snap-btn {
+  display:flex; align-items:center; gap:6px;
+  padding:5px 12px; border:1px solid var(--gold-border);
+  background:linear-gradient(135deg, rgba(200,168,75,.1), rgba(200,168,75,.04));
+  color:var(--gold); font-family:var(--fm); font-size:7px; letter-spacing:.18em;
+  cursor:pointer; transition:all .2s; white-space:nowrap;
+}
+.snap-btn:hover { background:linear-gradient(135deg,rgba(200,168,75,.22),rgba(200,168,75,.1)); border-color:var(--gold); }
+.snap-btn.saving { opacity:.6; pointer-events:none; }
+
 /* Scrollbar */
 ::-webkit-scrollbar        { width:2px; }
 ::-webkit-scrollbar-track  { background:var(--s0); }
@@ -383,6 +394,13 @@ input[type=range]::-webkit-slider-thumb {
     </div>
     <div class="hdiv"></div>
     <div class="fps-txt" id="fpsLabel">60 FPS</div>
+    <button class="snap-btn" id="snapBtn" onclick="takeSnapshot()" title="Save image">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
+      CAPTURE
+    </button>
   </div>
 </header>
 
@@ -558,6 +576,63 @@ input[type=range]::-webkit-slider-thumb {
 </script>
 
 <script type="module" src="src/main.js"></script>
+
+<script>
+function takeSnapshot() {
+  const btn = document.getElementById('snapBtn');
+  btn.classList.add('saving');
+  btn.lastChild.textContent = ' SAVING…';
+
+  try {
+    const glCanvas = document.getElementById('ec');
+    const dpr = window.devicePixelRatio || 1;
+    const W   = window.innerWidth  * dpr;
+    const H   = window.innerHeight * dpr;
+
+    const out = document.createElement('canvas');
+    out.width  = W;
+    out.height = H;
+    const ctx  = out.getContext('2d');
+
+    // 1. Background
+    ctx.fillStyle = '#080807';
+    ctx.fillRect(0, 0, W, H);
+
+    // 2. WebGL scene (works because preserveDrawingBuffer: true)
+    const rect = glCanvas.getBoundingClientRect();
+    ctx.drawImage(glCanvas,
+      rect.left * dpr, rect.top * dpr,
+      rect.width * dpr, rect.height * dpr
+    );
+
+    // 3. Panel silhouettes
+    document.querySelectorAll('.pleft, .pright, header').forEach(el => {
+      const r = el.getBoundingClientRect();
+      ctx.fillStyle = 'rgba(17,17,16,0.88)';
+      ctx.fillRect(r.left * dpr, r.top * dpr, r.width * dpr, r.height * dpr);
+    });
+
+    // 4. Gold watermark
+    ctx.font = `${Math.round(11 * dpr)}px "Space Mono", monospace`;
+    ctx.fillStyle = 'rgba(200,168,75,0.5)';
+    ctx.fillText('ENGINE ATELIER', 20 * dpr, H - 16 * dpr);
+
+    // Download
+    const link    = document.createElement('a');
+    const ts      = new Date().toISOString().slice(0,19).replace(/[:T]/g, '-');
+    link.download = `engine-atelier-${ts}.png`;
+    link.href     = out.toDataURL('image/png');
+    link.click();
+
+  } catch(e) {
+    console.error('Snapshot failed:', e);
+    alert('Snapshot failed: ' + e.message);
+  } finally {
+    btn.classList.remove('saving');
+    btn.lastChild.textContent = ' CAPTURE';
+  }
+}
+</script>
 
 </body>
 </html>
